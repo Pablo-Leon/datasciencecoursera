@@ -1,0 +1,890 @@
+---
+title: "ML_Project_Pablo_Leon"
+author: "Pablo Leon (p.leon@ieee.org)"
+date: "18 de agosto de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assigment: Prediction Assignment Writeup
+
+In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+
+## Executive Summary
+
+Our preferred prediction model is a stacked one, using generalizaed lineal (GLM), linear discriminant (LDA),
+and boosting (GBM).
+
+From the ytrain data we discarded those recvord marked as new_window = "yes", those records represent
+statistics over a time window of simple metrics (new_window="no"). The reason
+for this is that the Test dataset does not contains that kind of records.
+Several columns ("kurtosis_roll_dumbbell", "max_roll_forearm", "amplitude_yaw_forearm"
+, "kurtosis_yaw_dumbbell") only make sense for those omitted recors, so we discard this columns too.
+
+In several cases, particularly on class "A" captures, it seems that for the first few seconds
+the user is not performing the exercise, as we can count around 10 cycles on some variables
+starting in the midst of the recording.
+
+That observation allows us to trim the training data discarding the first seconds of the recording
+in order to avoid training with data before the exercise is performed.
+
+Nevertheless we didn't needed to do that in order to obtain good quality predictions.
+
+On preprocessing we :
+* found none zero nor near-zero variance variables, 
+* found none variable wich is a linear combination of other variables
+* several variables with high linear correlation.
+
+We checked principal component transformation, but found that transformation tend to emphasize
+difference between users rather than differences between classes (the data feed to the transformation 
+did not included the username).  
+
+So we avoided the PCA transformation, an used the raw data, then excluding higly correlated variables.
+
+We used a 8-fold cross-validation to estimate in-training accuracy.
+
+Our prefered model uses stacking using LDA, GLM GBM models and the user_name variable, since we are
+convinced that particularities of the captured data make sense mostly between data from the same user.
+
+Other models that completly ignore the user_name variable produced weaker predictions.
+
+Our preferred model have an inner 8-fold accuracy of 0.998 (Kappa of 0.99595).
+
+
+
+
+## Initialize & Load Data
+```{r echo=FALSE, messages=FALSE, warnings=FALSE}
+suppressPackageStartupMessages({
+  library(AppliedPredictiveModeling)
+  library(caret)
+  library(ElemStatLearn)
+  library(pgmm)
+  library(rpart)
+  library(gbm)
+  library(forecast)
+  library(e1071)
+  
+  
+  library(caret)
+  
+  library(lubridate)
+  library(tibble)
+  library(readr)
+  library(tidyr)
+  library(dplyr)
+  library(skimr)
+  library(ggplot2)
+  library(gridExtra)
+  
+  library(doParallel)
+})
+```
+
+
+```{r echo=FALSE}
+dfTest_Read <- read_csv("../data/pml-testing.csv"
+                         ,col_types = cols(
+                           X1 = col_integer(),
+                           user_name = col_character(),
+                           raw_timestamp_part_1 = col_integer(),
+                           raw_timestamp_part_2 = col_integer(),
+                           cvtd_timestamp = col_character(),
+                           new_window = col_character(),
+                           num_window = col_integer(),
+                           roll_belt = col_double(),
+                           pitch_belt = col_double(),
+                           yaw_belt = col_double(),
+                           total_accel_belt = col_integer(),
+                           kurtosis_roll_belt = col_character(),
+                           kurtosis_picth_belt = col_character(),
+                           kurtosis_yaw_belt = col_character(),
+                           skewness_roll_belt = col_character(),
+                           skewness_roll_belt.1 = col_character(),
+                           skewness_yaw_belt = col_character(),
+                           max_roll_belt = col_double(),
+                           max_picth_belt = col_integer(),
+                           max_yaw_belt = col_character(),
+                           min_roll_belt = col_double(),
+                           min_pitch_belt = col_integer(),
+                           min_yaw_belt = col_character(),
+                           amplitude_roll_belt = col_double(),
+                           amplitude_pitch_belt = col_integer(),
+                           amplitude_yaw_belt = col_character(),
+                           var_total_accel_belt = col_double(),
+                           avg_roll_belt = col_double(),
+                           stddev_roll_belt = col_double(),
+                           var_roll_belt = col_double(),
+                           avg_pitch_belt = col_double(),
+                           stddev_pitch_belt = col_double(),
+                           var_pitch_belt = col_double(),
+                           avg_yaw_belt = col_double(),
+                           stddev_yaw_belt = col_double(),
+                           var_yaw_belt = col_double(),
+                           gyros_belt_x = col_double(),
+                           gyros_belt_y = col_double(),
+                           gyros_belt_z = col_double(),
+                           accel_belt_x = col_integer(),
+                           accel_belt_y = col_integer(),
+                           accel_belt_z = col_integer(),
+                           magnet_belt_x = col_integer(),
+                           magnet_belt_y = col_integer(),
+                           magnet_belt_z = col_integer(),
+                           roll_arm = col_double(),
+                           pitch_arm = col_double(),
+                           yaw_arm = col_double(),
+                           total_accel_arm = col_integer(),
+                           var_accel_arm = col_double(),
+                           avg_roll_arm = col_double(),
+                           stddev_roll_arm = col_double(),
+                           var_roll_arm = col_double(),
+                           avg_pitch_arm = col_double(),
+                           stddev_pitch_arm = col_double(),
+                           var_pitch_arm = col_double(),
+                           avg_yaw_arm = col_double(),
+                           stddev_yaw_arm = col_double(),
+                           var_yaw_arm = col_double(),
+                           gyros_arm_x = col_double(),
+                           gyros_arm_y = col_double(),
+                           gyros_arm_z = col_double(),
+                           accel_arm_x = col_integer(),
+                           accel_arm_y = col_integer(),
+                           accel_arm_z = col_integer(),
+                           magnet_arm_x = col_integer(),
+                           magnet_arm_y = col_integer(),
+                           magnet_arm_z = col_integer(),
+                           kurtosis_roll_arm = col_character(),
+                           kurtosis_picth_arm = col_character(),
+                           kurtosis_yaw_arm = col_character(),
+                           skewness_roll_arm = col_character(),
+                           skewness_pitch_arm = col_character(),
+                           skewness_yaw_arm = col_character(),
+                           max_roll_arm = col_double(),
+                           max_picth_arm = col_double(),
+                           max_yaw_arm = col_integer(),
+                           min_roll_arm = col_double(),
+                           min_pitch_arm = col_double(),
+                           min_yaw_arm = col_integer(),
+                           amplitude_roll_arm = col_double(),
+                           amplitude_pitch_arm = col_double(),
+                           amplitude_yaw_arm = col_integer(),
+                           roll_dumbbell = col_double(),
+                           pitch_dumbbell = col_double(),
+                           yaw_dumbbell = col_double(),
+                           kurtosis_roll_dumbbell = col_character(),
+                           kurtosis_picth_dumbbell = col_character(),
+                           kurtosis_yaw_dumbbell = col_character(),
+                           skewness_roll_dumbbell = col_character(),
+                           skewness_pitch_dumbbell = col_character(),
+                           skewness_yaw_dumbbell = col_character(),
+                           max_roll_dumbbell = col_double(),
+                           max_picth_dumbbell = col_double(),
+                           max_yaw_dumbbell = col_character(),
+                           min_roll_dumbbell = col_double(),
+                           min_pitch_dumbbell = col_double(),
+                           min_yaw_dumbbell = col_character(),
+                           amplitude_roll_dumbbell = col_double(),
+                           amplitude_pitch_dumbbell = col_double(),
+                           amplitude_yaw_dumbbell = col_character(),
+                           total_accel_dumbbell = col_integer(),
+                           var_accel_dumbbell = col_double(),
+                           avg_roll_dumbbell = col_double(),
+                           stddev_roll_dumbbell = col_double(),
+                           var_roll_dumbbell = col_double(),
+                           avg_pitch_dumbbell = col_double(),
+                           stddev_pitch_dumbbell = col_double(),
+                           var_pitch_dumbbell = col_double(),
+                           avg_yaw_dumbbell = col_double(),
+                           stddev_yaw_dumbbell = col_double(),
+                           var_yaw_dumbbell = col_double(),
+                           gyros_dumbbell_x = col_double(),
+                           gyros_dumbbell_y = col_double(),
+                           gyros_dumbbell_z = col_double(),
+                           accel_dumbbell_x = col_integer(),
+                           accel_dumbbell_y = col_integer(),
+                           accel_dumbbell_z = col_integer(),
+                           magnet_dumbbell_x = col_integer(),
+                           magnet_dumbbell_y = col_integer(),
+                           magnet_dumbbell_z = col_double(),
+                           roll_forearm = col_double(),
+                           pitch_forearm = col_double(),
+                           yaw_forearm = col_double(),
+                           kurtosis_roll_forearm = col_character(),
+                           kurtosis_picth_forearm = col_character(),
+                           kurtosis_yaw_forearm = col_character(),
+                           skewness_roll_forearm = col_character(),
+                           skewness_pitch_forearm = col_character(),
+                           skewness_yaw_forearm = col_character(),
+                           max_roll_forearm = col_double(),
+                           max_picth_forearm = col_double(),
+                           max_yaw_forearm = col_character(),
+                           min_roll_forearm = col_double(),
+                           min_pitch_forearm = col_double(),
+                           min_yaw_forearm = col_character(),
+                           amplitude_roll_forearm = col_double(),
+                           amplitude_pitch_forearm = col_double(),
+                           amplitude_yaw_forearm = col_character(),
+                           total_accel_forearm = col_integer(),
+                           var_accel_forearm = col_double(),
+                           avg_roll_forearm = col_double(),
+                           stddev_roll_forearm = col_double(),
+                           var_roll_forearm = col_double(),
+                           avg_pitch_forearm = col_double(),
+                           stddev_pitch_forearm = col_double(),
+                           var_pitch_forearm = col_double(),
+                           avg_yaw_forearm = col_double(),
+                           stddev_yaw_forearm = col_double(),
+                           var_yaw_forearm = col_double(),
+                           gyros_forearm_x = col_double(),
+                           gyros_forearm_y = col_double(),
+                           gyros_forearm_z = col_double(),
+                           accel_forearm_x = col_integer(),
+                           accel_forearm_y = col_integer(),
+                           accel_forearm_z = col_integer(),
+                           magnet_forearm_x = col_integer(),
+                           magnet_forearm_y = col_double(),
+                           magnet_forearm_z = col_double(),
+                           problem_id = col_character()
+                         ))
+                         
+vNewWindow <- unique(dfTest_Read$new_window)
+
+```
+
+
+
+```{r echo=FALSE}
+dfTrain_Read <- read_csv("../data/pml-training.csv"
+                         ,col_types = cols(
+                           X1 = col_integer(),
+                           user_name = col_character(),
+                           raw_timestamp_part_1 = col_integer(),
+                           raw_timestamp_part_2 = col_integer(),
+                           cvtd_timestamp = col_character(),
+                           new_window = col_character(),
+                           num_window = col_integer(),
+                           roll_belt = col_double(),
+                           pitch_belt = col_double(),
+                           yaw_belt = col_double(),
+                           total_accel_belt = col_integer(),
+                           kurtosis_roll_belt = col_character(),
+                           kurtosis_picth_belt = col_character(),
+                           kurtosis_yaw_belt = col_character(),
+                           skewness_roll_belt = col_character(),
+                           skewness_roll_belt.1 = col_character(),
+                           skewness_yaw_belt = col_character(),
+                           max_roll_belt = col_double(),
+                           max_picth_belt = col_integer(),
+                           max_yaw_belt = col_character(),
+                           min_roll_belt = col_double(),
+                           min_pitch_belt = col_integer(),
+                           min_yaw_belt = col_character(),
+                           amplitude_roll_belt = col_double(),
+                           amplitude_pitch_belt = col_integer(),
+                           amplitude_yaw_belt = col_character(),
+                           var_total_accel_belt = col_double(),
+                           avg_roll_belt = col_double(),
+                           stddev_roll_belt = col_double(),
+                           var_roll_belt = col_double(),
+                           avg_pitch_belt = col_double(),
+                           stddev_pitch_belt = col_double(),
+                           var_pitch_belt = col_double(),
+                           avg_yaw_belt = col_double(),
+                           stddev_yaw_belt = col_double(),
+                           var_yaw_belt = col_double(),
+                           gyros_belt_x = col_double(),
+                           gyros_belt_y = col_double(),
+                           gyros_belt_z = col_double(),
+                           accel_belt_x = col_integer(),
+                           accel_belt_y = col_integer(),
+                           accel_belt_z = col_integer(),
+                           magnet_belt_x = col_integer(),
+                           magnet_belt_y = col_integer(),
+                           magnet_belt_z = col_integer(),
+                           roll_arm = col_double(),
+                           pitch_arm = col_double(),
+                           yaw_arm = col_double(),
+                           total_accel_arm = col_integer(),
+                           var_accel_arm = col_double(),
+                           avg_roll_arm = col_double(),
+                           stddev_roll_arm = col_double(),
+                           var_roll_arm = col_double(),
+                           avg_pitch_arm = col_double(),
+                           stddev_pitch_arm = col_double(),
+                           var_pitch_arm = col_double(),
+                           avg_yaw_arm = col_double(),
+                           stddev_yaw_arm = col_double(),
+                           var_yaw_arm = col_double(),
+                           gyros_arm_x = col_double(),
+                           gyros_arm_y = col_double(),
+                           gyros_arm_z = col_double(),
+                           accel_arm_x = col_integer(),
+                           accel_arm_y = col_integer(),
+                           accel_arm_z = col_integer(),
+                           magnet_arm_x = col_integer(),
+                           magnet_arm_y = col_integer(),
+                           magnet_arm_z = col_integer(),
+                           kurtosis_roll_arm = col_character(),
+                           kurtosis_picth_arm = col_character(),
+                           kurtosis_yaw_arm = col_character(),
+                           skewness_roll_arm = col_character(),
+                           skewness_pitch_arm = col_character(),
+                           skewness_yaw_arm = col_character(),
+                           max_roll_arm = col_double(),
+                           max_picth_arm = col_double(),
+                           max_yaw_arm = col_integer(),
+                           min_roll_arm = col_double(),
+                           min_pitch_arm = col_double(),
+                           min_yaw_arm = col_integer(),
+                           amplitude_roll_arm = col_double(),
+                           amplitude_pitch_arm = col_double(),
+                           amplitude_yaw_arm = col_integer(),
+                           roll_dumbbell = col_double(),
+                           pitch_dumbbell = col_double(),
+                           yaw_dumbbell = col_double(),
+                           kurtosis_roll_dumbbell = col_character(),
+                           kurtosis_picth_dumbbell = col_character(),
+                           kurtosis_yaw_dumbbell = col_character(),
+                           skewness_roll_dumbbell = col_character(),
+                           skewness_pitch_dumbbell = col_character(),
+                           skewness_yaw_dumbbell = col_character(),
+                           max_roll_dumbbell = col_double(),
+                           max_picth_dumbbell = col_double(),
+                           max_yaw_dumbbell = col_character(),
+                           min_roll_dumbbell = col_double(),
+                           min_pitch_dumbbell = col_double(),
+                           min_yaw_dumbbell = col_character(),
+                           amplitude_roll_dumbbell = col_double(),
+                           amplitude_pitch_dumbbell = col_double(),
+                           amplitude_yaw_dumbbell = col_character(),
+                           total_accel_dumbbell = col_integer(),
+                           var_accel_dumbbell = col_double(),
+                           avg_roll_dumbbell = col_double(),
+                           stddev_roll_dumbbell = col_double(),
+                           var_roll_dumbbell = col_double(),
+                           avg_pitch_dumbbell = col_double(),
+                           stddev_pitch_dumbbell = col_double(),
+                           var_pitch_dumbbell = col_double(),
+                           avg_yaw_dumbbell = col_double(),
+                           stddev_yaw_dumbbell = col_double(),
+                           var_yaw_dumbbell = col_double(),
+                           gyros_dumbbell_x = col_double(),
+                           gyros_dumbbell_y = col_double(),
+                           gyros_dumbbell_z = col_double(),
+                           accel_dumbbell_x = col_integer(),
+                           accel_dumbbell_y = col_integer(),
+                           accel_dumbbell_z = col_integer(),
+                           magnet_dumbbell_x = col_integer(),
+                           magnet_dumbbell_y = col_integer(),
+                           magnet_dumbbell_z = col_double(),
+                           roll_forearm = col_double(),
+                           pitch_forearm = col_double(),
+                           yaw_forearm = col_double(),
+                           kurtosis_roll_forearm = col_character(),
+                           kurtosis_picth_forearm = col_character(),
+                           kurtosis_yaw_forearm = col_character(),
+                           skewness_roll_forearm = col_character(),
+                           skewness_pitch_forearm = col_character(),
+                           skewness_yaw_forearm = col_character(),
+                           max_roll_forearm = col_double(),
+                           max_picth_forearm = col_double(),
+                           max_yaw_forearm = col_character(),
+                           min_roll_forearm = col_double(),
+                           min_pitch_forearm = col_double(),
+                           min_yaw_forearm = col_character(),
+                           amplitude_roll_forearm = col_double(),
+                           amplitude_pitch_forearm = col_double(),
+                           amplitude_yaw_forearm = col_character(),
+                           total_accel_forearm = col_integer(),
+                           var_accel_forearm = col_double(),
+                           avg_roll_forearm = col_double(),
+                           stddev_roll_forearm = col_double(),
+                           var_roll_forearm = col_double(),
+                           avg_pitch_forearm = col_double(),
+                           stddev_pitch_forearm = col_double(),
+                           var_pitch_forearm = col_double(),
+                           avg_yaw_forearm = col_double(),
+                           stddev_yaw_forearm = col_double(),
+                           var_yaw_forearm = col_double(),
+                           gyros_forearm_x = col_double(),
+                           gyros_forearm_y = col_double(),
+                           gyros_forearm_z = col_double(),
+                           accel_forearm_x = col_integer(),
+                           accel_forearm_y = col_integer(),
+                           accel_forearm_z = col_integer(),
+                           magnet_forearm_x = col_integer(),
+                           magnet_forearm_y = col_double(),
+                           magnet_forearm_z = col_double(),
+                           classe = col_character()
+                         ))
+
+dfCheck <- dfTrain_Read %>%
+  select(raw_timestamp_part_1, num_window, user_name) %>%
+  unique()
+
+```
+
+
+
+```{r echo=FALSE}
+dfTrain <- dfTrain_Read %>%
+  filter(new_window %in% vNewWindow) %>%
+  select(-X1, -new_window, -cvtd_timestamp) %>%
+  mutate(  
+    correct = factor( if_else(classe == "A", "Yes", "No") )
+    ,classe = factor(classe)
+    ,user_name = factor(user_name)
+    ) %>%
+  select(correct, classe
+         ,user_name, num_window
+         ,raw_timestamp_part_1, raw_timestamp_part_2
+         ,everything()) %>%
+  group_by(user_name, classe) %>%
+  mutate( 
+    rel_win = dense_rank(num_window)
+    ,ts = dense_rank(raw_timestamp_part_1) + raw_timestamp_part_2/1000000
+    ) %>%
+  ungroup()
+
+
+vNames_Train <- names(dfTrain)
+nTrain <- nrow(dfTrain)
+
+for (j in rev(seq_along(dfTrain))) {
+  v  <- dfTrain[[j]]
+  if (sum(is.na(v)) == nTrain) {
+    # print(sprintf("field is NA(%d): %s", j, vNames_Train[j]))
+    dfTrain[[j]] <- NULL
+  }
+}
+
+# table(dfTrain$classe, dfTrain$user_name, useNA="ifany")
+# table(dfTrain$classe, dfTrain$correct, useNA="ifany")
+
+
+dfTrain_Y <- dfTrain %>%
+  select(correct, classe)
+
+dfTrain_X <- dfTrain %>%
+  select(-correct, -classe
+         ,-rel_win, -ts
+         )
+
+```
+
+
+
+## Explore
+
+
+```{r echo=FALSE}
+
+# > toString(names(dfTrain) %>% sort() %>% .[grepl("dumbbell", .)])
+# [1] "accel_dumbbell_x, accel_dumbbell_y, accel_dumbbell_z
+# , gyros_dumbbell_x, gyros_dumbbell_y, gyros_dumbbell_z
+# , magnet_dumbbell_x, magnet_dumbbell_y, magnet_dumbbell_z
+# , pitch_dumbbell, roll_dumbbell, yaw_dumbbell
+# , total_accel_dumbbell"
+
+
+dfTrain_Long <- dfTrain %>%
+  ungroup()  %>%
+  gather(key = "var", value = "val"
+         ,total_accel_belt
+         ,total_accel_arm
+         ,total_accel_dumbbell
+         ,total_accel_forearm
+         ,roll_belt, pitch_belt, yaw_belt
+         ,gyros_belt_x, gyros_belt_y, gyros_belt_z
+         ,accel_belt_x, accel_belt_y, accel_belt_z
+         ,magnet_belt_x, magnet_belt_y, magnet_belt_z
+         ,roll_arm, pitch_arm, yaw_arm
+         ,gyros_arm_x, gyros_arm_y, gyros_arm_z
+         ,accel_arm_x, accel_arm_y, accel_arm_z
+         ,magnet_arm_x, magnet_arm_y, magnet_arm_z
+         ,roll_dumbbell, pitch_dumbbell, yaw_dumbbell
+         ,gyros_dumbbell_x, gyros_dumbbell_y, gyros_dumbbell_z
+         ,accel_dumbbell_x, accel_dumbbell_y, accel_dumbbell_z
+         ,magnet_dumbbell_x, magnet_dumbbell_y, magnet_dumbbell_z
+         ,roll_forearm, pitch_forearm, yaw_forearm
+         ,gyros_forearm_x, gyros_forearm_y, gyros_forearm_z
+         ,accel_forearm_x, accel_forearm_y, accel_forearm_z
+         ,magnet_forearm_x, magnet_forearm_y, magnet_forearm_z
+         ) %>%
+  mutate( var   = factor(var) )
+
+```
+
+
+
+
+```{r eval=FALSE, echo=FALSE}
+
+vUserNames <- levels(dfTrain$user_name)
+
+dfAux <- dfTrain_Long %>%
+  filter( user_name == vUserNames[1] ) %>%
+  filter( var %in% c("total_accel_belt", "total_accel_arm", "total_accel_dumbbell", "total_accel_forearm" ))
+
+
+pltChart <- ggplot(dfAux
+               ,aes(x=ts, y=val, color=var)) +
+    geom_point(shape=20) +
+    facet_grid( classe ~ . )
+
+pltChart
+```
+
+
+
+The following chart seems to indicate that on class "A" exercises, the first seconds the users are not performing 
+the exercise, since there are around 10 cycles of acceleration starting in the midst of the recording.
+
+
+```{r echo=TRUE}
+
+dfAux <- dfTrain_Long %>%
+  filter( classe == "A") %>%
+  filter( var %in% c("total_accel_belt", "total_accel_arm", "total_accel_dumbbell", "total_accel_forearm" ))
+
+
+pltChart <- ggplot(dfAux
+               ,aes(x=ts, y=val, color=var)) +
+    geom_point(shape=20) +
+    facet_grid( user_name ~ . )
+
+pltChart
+```
+
+
+
+```{r eval=FALSE, echo=FALSE}
+
+dfAux <- dfTrain_Long %>%
+  filter( classe == "E") %>%
+  filter( var %in% c("total_accel_belt", "total_accel_arm", "total_accel_dumbbell", "total_accel_forearm" ))
+
+
+pltChart <- ggplot(dfAux
+               ,aes(x=ts, y=val, color=var)) +
+    geom_point(shape=20) +
+    facet_grid( user_name ~ . )
+
+# pltChart
+```
+
+
+### featurePlot
+
+```{r echo=TRUE}
+featurePlot( x = dfTrain_X %>%
+               select(-user_name 
+                      , -raw_timestamp_part_1, -raw_timestamp_part_2
+                      )
+            ,y = dfTrain_Y$classe
+            ,plot = "box"
+)
+#                      , -raw_timestamp_part_1, -raw_timestamp_part_2
+```
+
+
+
+## Pre-Processing
+
+### Zero and Near-Zero variability, and correlation between predictors
+
+Zero and Near-Zero variability variables:
+```{r echo=FALSE}
+nzv <- nearZeroVar(dfTrain_X, saveMetrics= TRUE)
+nzv %>% rownames_to_column(var = "col") %>% filter(zeroVar == TRUE |  nzv == TRUE)
+```
+
+```{r echo=FALSE}
+# Correlated
+comboInfo <- findLinearCombos(dfTrain_X %>% select(-user_name))
+
+comboInfo
+
+# High Corr
+corClean <-  cor(dfTrain_X %>% select(-user_name))
+# summary(corClean[upper.tri(corClean)])
+
+cutoff <- 0.75
+
+highCorr <- sum(abs(corClean[upper.tri(corClean)]) > cutoff)
+
+vHighlyCor <- findCorrelation(corClean, cutoff = cutoff, names=FALSE, exact=TRUE)
+
+vNames_HighlyCor <- findCorrelation(corClean, cutoff = cutoff, names=TRUE, exact=TRUE)
+
+# names(dfTrain_X)[vHighlyCor]
+
+# we keep hi-correlated vars because will use PCA, so correlation will not be a problem
+
+
+```
+
+Variables to be ommited because of linear correlation:
+```{r echo=FALSE}
+vNames_HighlyCor
+```
+
+
+PCA transformation seems to emphasize the difference between users instead of difference wetween classes.
+
+
+```{r echo=FALSE}
+lstPca <- prcomp(dfTrain_X %>% select(-user_name),
+                 center = TRUE,
+                 scale. = TRUE) 
+
+# plot(lstPca, type = "l")
+
+dfPca <- as_tibble(lstPca$x)
+
+trans = preProcess(dfTrain_X %>% select(-user_name), 
+                   method=c("center", 
+                            "scale", "pca"))
+dfPC = predict(trans, dfTrain_X %>% select(-user_name))
+
+pltClasse <- qplot(x = PC1, y=PC2, shape=dfTrain_Y$correct
+      ,color = dfTrain_Y$classe
+      ,alpha = 0.25
+      ,data=dfPC
+      )
+
+pltUser <- qplot(x = PC1, y=PC2, shape=dfTrain_Y$correct
+      ,color = dfTrain_X$user_name
+      ,alpha = 0.25
+      ,data=dfPC
+      )
+
+# pltClasse34 <- qplot(x = PC3, y=PC4, shape=dfTrain_Y$correct
+#       ,color = dfTrain_Y$classe
+#       ,alpha = 0.25
+#       ,data=dfPC
+#       )
+# 
+# pltUser34 <- qplot(x = PC3, y=PC4, shape=dfTrain_Y$correct
+#       ,color = dfTrain_X$user_name
+#       ,alpha = 0.25
+#       ,data=dfPC
+#       )
+
+grid.arrange(pltClasse, pltUser, ncol = 1)
+```
+
+
+
+## Cross-validation
+
+```{r echo=FALSE}
+nFolds <- 8
+
+folds <- createFolds(dfTrain_Y$correct, k = nFolds) 
+
+ctrlFolds <- trainControl( method = "cv"
+                           ,number = nFolds
+                           ,classProbs = TRUE
+                           ,index = folds
+                           )
+```
+
+
+
+
+## Models
+
+```{r echo=FALSE}
+# dfTrain_XY <- dfPC %>% 
+#   mutate(correct = dfTrain$correct)
+
+dfTrain_XY <- dfTrain_X %>% 
+  select(-vNames_HighlyCor) %>% 
+  mutate(correct = dfTrain_Y$correct)
+
+```
+
+
+
+### Model Random Forest
+```{r eval=FALSE, echo=FALSE}
+cl <- makePSOCKcluster(4)
+
+registerDoParallel(cl)
+
+set.seed(33833)
+system.time(mdlRF <- train( correct ~ .
+             , method="rf"
+             , trControl = ctrlFolds
+             , data=dfTrain_XY))
+
+stopCluster(cl)
+
+
+mdlRF
+```
+
+
+  >    user  system elapsed 
+  >   43.64    0.44   88.46 
+  > Random Forest 
+  > 
+  > 19216 samples
+  >    35 predictor
+  >     2 classes: 'No', 'Yes' 
+  > 
+  > No pre-processing
+  > Resampling: Cross-Validated (8 fold) 
+  > Summary of sample sizes: 2403, 2402, 2402, 2402, 2402, 2401, ... 
+  > Resampling results across tuning parameters:
+  > 
+  >   mtry  Accuracy   Kappa    
+  >    2    0.9859938  0.9651365
+  >   20    0.9932125  0.9832885
+  >   39    0.9887074  0.9720965
+  > 
+  > Accuracy was used to select the optimal model using the largest value.
+  > The final value used for the model was mtry = 20.
+  > 
+
+
+### Model GLM
+```{r echo=FALSE}
+set.seed(7581)
+system.time(mdlGLM <- train( correct ~ .
+             , method="glm"
+             , trControl = ctrlFolds
+             , data=dfTrain_XY))
+
+mdlGLM
+```
+
+
+* Note:
+    * We will accept the model even with several warnings on potential colinearity since:
+        * we droped variables with high correlation
+        * the cross-validation accuracy is still high
+    * So we migth have overfitting (or perfect predictions) on some cases but not in a scale that invalidate the prediction
+    * On the other hand, we have 2402 cros-valitation test cases for 35 predictors, so we bet most likely it's a good prediction and not overfitting.
+    * The same goes for LDA
+    
+
+### Model GBM
+```{r echo=FALSE}
+set.seed(7581)
+system.time(mdlGBM <- train( correct ~ .
+             , method="gbm"
+             , trControl = ctrlFolds
+             , data=dfTrain_XY))
+
+mdlGBM
+```
+
+
+
+
+### Model LDA
+```{r echo=FALSE}
+set.seed(7581)
+system.time(mdlLDA <- train( correct ~ .
+             , method="lda"
+             , trControl = ctrlFolds
+             , data=dfTrain_XY))
+
+mdlLDA
+```
+
+
+### Model Stacked
+```{r echo=TRUE}
+vTrainGLM <- predict(mdlGLM,  dfTrain_XY)
+vTrainLDA <- predict(mdlLDA, dfTrain_XY)
+
+vTrainGBM <- predict(mdlGBM, dfTrain_XY)
+
+# comparing bothe predictions
+# confusionMatrix(vTrainGLM, vTrainLDA)
+# confusionMatrix(vTrainGLM, vTrainGBM)
+# confusionMatrix(vTrainLDA, vTrainGBM)
+
+dfStacked_Train <- tibble( correct = dfTrain_XY$correct
+                           ,user_name = dfTrain_XY$user_name
+                           ,glm = vTrainGLM
+                           ,lda = vTrainLDA
+                           ,gbm = vTrainGBM
+)
+```
+
+
+
+```{r echo=TRUE}
+cl <- makePSOCKcluster(4)
+
+registerDoParallel(cl)
+
+set.seed(33833)
+system.time(mdlStacked <- train(correct ~ .
+                    , method="rf"
+                    , trControl = ctrlFolds
+                    , data=dfStacked_Train))
+
+stopCluster(cl)
+
+
+mdlStacked
+
+```
+
+
+
+## Apply to Test
+
+```{r echo=FALSE}
+
+lvl <- levels(dfTrain_XY$user_name)
+
+vTest_cols <- setdiff( names(dfTrain_XY), c("correct","problem_id" ))
+dfTest <- dfTest_Read %>% 
+  select(vTest_cols) %>% 
+  mutate( user_name = factor(user_name, levels = lvl))
+  
+```
+
+
+Prediction:
+* Yes :  correcto (classe "A")
+* No : incorrect
+
+```{r echo=TRUE}
+vTestGLM <- predict(mdlGLM,  dfTest)
+vTestLDA <- predict(mdlLDA, dfTest)
+
+vTestGBM <- predict(mdlGBM, dfTest)
+
+dfStacked_Test <- tibble(   user_name = dfTest$user_name
+                           ,glm = vTestGLM
+                           ,lda = vTestLDA
+                           ,gbm = vTestGBM
+)
+
+
+vTest_Stacked <- predict(mdlStacked, dfStacked_Test)
+
+dfStacked_TestXY <- dfStacked_Test %>%
+  mutate(result = vTest_Stacked)
+
+dfResult <- dfTest %>%
+  mutate(problem_id = dfTest_Read$problem_id
+         ,prediction = vTest_Stacked
+         ) %>%
+  select(problem_id, prediction
+         ,user_name, num_window
+         )
+dfResult
+```
+
