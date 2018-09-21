@@ -1,0 +1,68 @@
+---
+title: "ddp_w2_assignment"
+date: "21 de septiembre de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(leaflet)
+library(tibble)
+library(tidyr)
+library(dplyr)
+
+```
+
+## Some earthquakes ...
+
+* Note:
+   * Most code taken from [here](http://www.r-graph-gallery.com/19-map-leafletr/)
+   
+```{r}
+# Library
+ 
+# load example data (Fiji Earthquakes) + keep only 100 first lines
+data(quakes)
+quakes_org =  head(quakes, 100)
+
+quakes <- tibble(
+    lat   = c(-38.14, -36.12, -28.29	)
+  , long  = c(-73.41, -72.90, -69.85 )
+  , date = c("May 22, 1960", "Feb 27, 2010", "Nov 11, 1922")
+  , mag   = c(   9.5,   8.8 ,   8.5    )
+  , name = c("Valdivia", "Maule", "Atacama")
+)
+```
+
+```{r}
+ 
+# Create a color palette with handmade bins.
+mybins=seq(7, 9.5, by=0.5)
+mypalette = colorBin( palette="YlOrBr", domain=quakes$mag, na.color="transparent", bins=mybins)
+ 
+# Prepar the text for the tooltip:
+mytext=paste("Date: ", quakes$date, "<br/>", "Name: ", quakes$name, "<br/>", "Magnitude: ", quakes$mag, sep="") %>%
+  lapply(htmltools::HTML)
+ 
+```
+
+
+```{r}
+
+# Final Map
+leaflet(quakes) %>% 
+  addTiles()  %>% 
+  setView( lat=-33, lng=-71 , zoom=4) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  addCircleMarkers(~long, ~lat, 
+    fillColor = ~mypalette(mag), fillOpacity = 0.7, color="white", radius=8, stroke=FALSE,
+    label = mytext,
+    labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
+  ) %>%
+  addLegend( pal=mypalette, values=~mag, opacity=0.9, title = "Magnitude", position = "bottomright" )
+
+```
+
+
+
