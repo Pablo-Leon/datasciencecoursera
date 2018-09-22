@@ -1,0 +1,42 @@
+---
+title: "ddp_w3_assignment"
+date: "22 de septiembre de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(plotly)
+library(tibble)
+library(tidyr)
+library(dplyr)
+
+```
+
+## Some smoothing ...
+
+* Note:
+   * Most code taken from [here](https://plot.ly/ggplot2/stat_smooth/)
+   
+```{r}
+
+p <- ggplot(mpg, aes(x=displ, y=hwy))
+p <- p + geom_point() + stat_smooth()
+
+gp <- ggplotly(p)
+```
+
+## Plotly
+```{r, warning=FALSE}
+gp
+```
+
+
+## ggplot2
+```{r, warning=FALSE}
+p
+```
+
+
+
