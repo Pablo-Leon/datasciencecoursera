@@ -1,0 +1,57 @@
+---
+title: "ddp_w4_presentation"
+author: Pablo León
+date: 2018-09-24
+output: slidy_presentation
+---
+
+
+Pitch
+========================================================
+
+It's a very simple task to build a presentation with rmarkdown!
+
+
+Pitch ...
+========================================================
+
+To write a list like this:
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+You write:
+```
+- Bullet 1
+- Bullet 2
+- Bullet 3
+```
+
+
+Pitch ...
+========================================================
+
+Or show them incrementaly like this:
+
+>- Bullet 1
+>- Bullet 2
+>- Bullet 3
+
+
+
+You can include the execution of some code
+========================================================
+
+```{r}
+summary(cars)
+```
+
+Or include a plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+For more details on authoring R presentations please visit <https://support.rstudio.com/hc/en-us/articles/200486468>.
