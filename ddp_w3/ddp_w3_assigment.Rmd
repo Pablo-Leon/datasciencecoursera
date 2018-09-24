@@ -1,7 +1,8 @@
 ---
 title: "ddp_w3_assignment"
-date: "22 de septiembre de 2018"
-output: html_document
+author: "plr"
+date: "24 de septiembre de 2018"
+output: slidy_presentation
 ---
 
 ```{r setup, include=FALSE}
