@@ -13,7 +13,7 @@ fluidPage(
   ,sidebarLayout(
     # Sidebar with a slider and selection inputs
     sidebarPanel(
-      selectInput("selection", "Choose a book:",
+      selectInput("selection", "Choose a function:",
                   choices = funcs),
       actionButton("update", "Change"),
       hr(),
