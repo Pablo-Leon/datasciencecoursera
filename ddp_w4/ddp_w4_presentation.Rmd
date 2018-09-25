@@ -1,6 +1,6 @@
 ---
 title: "ddp_w4_presentation"
-author: Pablo León
+author: Pablo Leon
 date: 2018-09-24
 output: slidy_presentation
 ---
