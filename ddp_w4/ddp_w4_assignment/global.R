@@ -1,6 +1,10 @@
 library(tm)
 library(wordcloud)
 library(memoise)
+library(tibble)
+library(tidyr)
+library(dplyr)
+library(readr)
 
 # The list of valid books
 # books <<- list("A Mid Summer Night's Dream" = "summer",
