@@ -6,52 +6,89 @@ output: slidy_presentation
 ---
 
 
-Pitch
+Word Cloud Pitch
 ========================================================
 
-It's a very simple task to build a presentation with rmarkdown!
+Surveys usually collects certain attributtes of the subject using
+written text.
+
+This happens even when the questionnaire presents a limited set of options.
+
+This allows to capture options that were not anticipated on the form design
+or for options that are expected to have very low frequency, so not worthy of include as explicit option in the form.
 
 
-Pitch ...
+
+Word Cloud Pitch ...
 ========================================================
 
-To write a list like this:
+This brings a problem that the same option can be written in several different forms.
 
-- Bullet 1
-- Bullet 2
-- Bullet 3
+Those different forms have to be normalized and assigned to a valid option.
 
-You write:
+The intention of the application is to show how many different forms each
+of the valid options had on a survey.
+
+The case displayed is the question on the originary people of chile self-identification
+of a certain survey.
+
+
+Word Cloud Pitch ...
+========================================================
+
+There are several reasons for the variations on the way an option can be written.
+
+>- ( a ) Sometimes the category have many alternative names.
+>- ( b ) Sometimes the text describe a situation which is interpreted by the survey team as a corresponding to a category
+>- ( c ) Othertimes the text is pooly written, with spelling errors or just because the pollster is not familiar with the word, or with poor optical character recognition.
+
+
+
+Word Cloud Pitch ...
+========================================================
+
+This are examples of each case.
+
+```{r echo=FALSE}
+
+suppressPackageStartupMessages({
+library(tibble)
+library(dplyr)
+})
+
+lstCase <- list(
+  a = c( "ARAUCANO" = "Alternative name")
+  ,b = c( "FRANCESA MAPUCHE" = "Mixed descendence"
+           ,"MADUGUNDUN" = "The language of Mapuche people"
+           ,"MADRE MAPUCHE" = "Mother is Mapuche, accepted self-identification")
+  ,c = c( "MACHUPE" = "Wrong spelling"
+            , "HAPUCHE" = "probably OCR"
+            , "AIAUCANO" = "probably OCR"
+            )
+)
+
+
+dfCases <- lapply(names(lstCase), function(name) {
+  vText <- lstCase[[ name   ]]
+  nLen <- length(vText)
+  vCat <- rep(name, nLen)
+  
+  tibble( Case = vCat, Text = names(vText), Description = unname(vText))
+}) %>% bind_rows()
+
+dfCases
 ```
-- Bullet 1
-- Bullet 2
-- Bullet 3
-```
 
 
-Pitch ...
+Word Cloud Pitch ...
 ========================================================
 
-Or show them incrementaly like this:
+Then in order to best display the relative differences in alternative cases 
+for each category, a function is introduced to reduce the difference, 
+so the user can try with:
 
->- Bullet 1
->- Bullet 2
->- Bullet 3
+- Quantity : "true" values
+- log() : Logarithm of the Quantity, minimum contrast between values
+- sqrt() : Square root of the Quantity, higher contrast with respect to log()
 
 
-
-You can include the execution of some code
-========================================================
-
-```{r}
-summary(cars)
-```
-
-Or include a plot
-========================================================
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-For more details on authoring R presentations please visit <https://support.rstudio.com/hc/en-us/articles/200486468>.
