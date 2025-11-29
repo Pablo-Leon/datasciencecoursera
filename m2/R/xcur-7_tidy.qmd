@@ -1,0 +1,135 @@
+---
+title: "xcur-7_tidy"
+format: html
+params:
+    dummy: 1
+    file_text: data_in/fi_FI.twitter.txt
+---
+
+
+```{r}
+params <- "R/xcur-7_tidy.qmd" |>
+    rmarkdown::yaml_front_matter() |>
+    _$params
+
+```
+
+
+
+```{r}
+
+library(rprojroot)
+library(tidytext)
+library(readr)
+library(vroom)
+library(tibble)
+library(dplyr)
+library(stringr)
+
+root <- rprojroot::is_renv_project
+
+```
+
+
+Cargar datos
+-------------
+
+```{r}
+v_lines <- params$file_text |>
+    root$find_file() |>
+    vroom_lines()
+
+#    readLines()
+
+
+
+```
+
+```{r}
+a2n <- function(v) {stringi::stri_trans_general(v, "Any-Name")}
+
+n2a <- function(v) {stringi::stri_trans_general(v, "Name-Any")}
+
+```
+
+```{r}
+
+v_content <- v_lines |>
+    str_remove_all("\\N{REPLACEMENT CHARACTER}") |>
+    str_remove_all("[\\001\\020\\034]+") |>
+    str_remove_all("[\\u0084\\u0082\\u0099]+") |>
+    str_remove_all("[\177]+") |>
+    str_remove_all("[\\h\\s[:punct:]\\d]+") |>
+    str_remove_all("\\p{Script=Latin}") |>
+    str_remove_all("\\p{Script=Cyrillic}") |>
+    str_remove_all("\\p{Script=Hiragana}") |>
+    str_remove_all("\\p{Script=Han}") |>
+    str_remove_all("\\p{Script=Katakana}") |>
+    str_remove_all("\\p{Script=Greek}") |>
+    str_remove_all("\\p{Script=Hangul}") |>
+    str_remove_all("\\p{Script=Kannada}") |>
+    str_remove_all("\\p{Script=Cans}") |>
+    str_remove_all("\\p{Other Letter}") |>
+    str_remove_all("\\p{HYPHEN}") |>
+    str_remove_all("\\p{Diacritic}") |>
+    str_remove_all("\\p{Dash}") |>
+    str_remove_all("\\p{Emoji}") |>
+    str_remove_all("\\p{Math}") |>
+    str_remove_all("\\p{Bidi_Control}") |>
+    str_remove_all("[\\N{LESS-THAN SIGN}\\N{EQUALS SIGN}\\N{PLUS SIGN}\\N{PLUS-MINUS SIGN}\\N{GREATER-THAN SIGN}\\N{LESS-THAN SIGN}]") |>
+    str_remove_all("[\\N{ALMOST EQUAL TO}\\N{MICRO SIGN}]") |>
+    str_remove_all("[\\N{CURRENCY SIGN}\\N{DOLLAR SIGN}\\N{YEN SIGN}\\N{EURO SIGN}\\N{POUND SIGN}]") |>
+    str_remove_all("[\\N{VULGAR FRACTION ONE HALF}\\N{SUPERSCRIPT TWO}\\N{SUPERSCRIPT THREE}\\N{SUPERSCRIPT ZERO}\\N{NUMERO SIGN}]") |>
+    str_remove_all("[\\N{FOR ALL}\\N{N-ARY SUMMATION}\\N{NOT EQUAL TO}\\N{FULLWIDTH GREATER-THAN SIGN}\\N{FULLWIDTH LESS-THAN SIGN}]") |>
+    str_remove_all("[\\N{HEAVY BLACK HEART}\\N{RECYCLING SYMBOL FOR GENERIC MATERIALS}\\N{MALE SIGN}\\N{FEMALE SIGN}]") |>
+    str_remove_all("[\\N{BLACK HEART SUIT}\\N{CIRCLE WITH ALL BUT UPPER LEFT QUADRANT BLACK}\\N{LOWER HALF CIRCLE}]") |>
+    str_remove_all("[\\N{DEGREE SIGN}\\N{COPYRIGHT SIGN}\\N{REGISTERED SIGN}]") |>
+    str_remove_all("[\\N{RIGHTWARDS ARROW}\\N{WHITE UP-POINTING TRIANGLE}\\N{VERTICAL LINE}\\N{BROKEN BAR}\\N{BOX DRAWINGS LIGHT HORIZONTAL}]") |>
+    str_remove_all("[\\N{TILDE}\\N{FULLWIDTH TILDE}\\N{HEAVY WIDE-HEADED RIGHTWARDS ARROW}]") |>
+    str_remove_all("[\\N{BLACK FLORETTE}\\N{UPPER HALF CIRCLE}]") |>
+    str_remove_all("[\\N{BLACK SMILING FACE}\\N{FISHEYE}\\N{BULLSEYE}\\N{WHITE BULLET}\\N{WHITE SUN WITH RAYS}]") |>
+    str_remove_all("[\\N{LOWER RIGHT QUADRANT CIRCULAR ARC}\\N{LOWER LEFT QUADRANT CIRCULAR ARC}]") |>
+    str_remove_all("[\\N{FULL BLOCK}\\N{LIGHT SHADE}\\N{LEFT HALF BLOCK}]") |>
+    str_remove_all("[\\N{QUARTER NOTE}\\N{EIGHTH NOTE}\\N{BEAMED EIGHTH NOTES}\\N{BEAMED SIXTEENTH NOTES}]") |>
+    str_remove_all("[\\N{ZERO WIDTH SPACE}]+") |>
+    str_replace("(.)\\1+", "\\1") |>
+    unique() |>
+    sort()
+
+# \\N{LEFT-TO-RIGHT MARK}\\N{RIGHT-TO-LEFT MARK}
+#    str_remove_all("[\\N{LEFT-TO-RIGHT MARK}\\N{RIGHT-TO-LEFT MARK}]") |>
+
+# de: https://en.wikipedia.org/wiki/Unicode#Standardized_subsets
+# Initial scripts covered: Arabic, Armenian, Bengali, Bopomofo, Cyrillic, Devanagari,
+# Georgian, Greek and Coptic, Gujarati, Gurmukhi, Hangul,
+# Hebrew, Hiragana, Kannada, Katakana, Lao, Latin, Malayalam,
+# Odia, Tamil, Telugu, Thai, and Tibetan
+
+# https://www.unicode.org/charts/PDF/U20A0.pdf
+# "\\N{COLON SIGN}" |> n2a() |> str_replace_all("\\p{Block=Currency Symbols}", "#")
+
+#    str_remove_all("[\\N{HEAVY BLACK HEART}\\N{RECYCLING SYMBOL FOR GENERIC MATERIALS}\\N{MALE SIGN}\\N{FEMALE SIGN}]") |>
+#    str_remove_all("[\\N{BLACK HEART SUIT}\\N{CIRCLE WITH ALL BUT UPPER LEFT QUADRANT BLACK}\\N{LOWER HALF CIRCLE}]") |>
+#    str_replace("(.)\\1+", "\\1") |>
+
+# "\\N{REPLACEMENT CHARACTER}"
+#    str_remove_all(n2a("\\N{<private use area-F8FF>}")) |>
+
+length(v_content)
+
+
+```
+```{r}
+
+v_lines_clean <- v_lines |>
+
+
+```
+
+```{r}
+df_lines <- tibble( text = v_lines |> sort() |> unique() ) |>
+    mutate(
+        line = row_number()
+    )
+
+```
