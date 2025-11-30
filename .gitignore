@@ -1,0 +1,11 @@
+#
+# .gitignore
+#
+.Rbuildignore
+.Rprofile
+#
+renv/
+data_in/
+temp/
+log/
+cache/
