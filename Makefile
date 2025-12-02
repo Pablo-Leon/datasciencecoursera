@@ -26,6 +26,8 @@ clean:
 	@rm -rf $(PKGNAME)_$(PKGVERS).tar.gz $(PKGNAME).Rcheck
 
 
+VPATH = R:data_in:cache
+
 URL_DATA=https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip
 
 init_wd:
@@ -39,3 +41,16 @@ Coursera-SwiftKey.zip:
 Coursera-SwiftKey.mrk: Coursera-SwiftKey.zip
 	# $@ ...
 	cd data_in; unzip -j $(<F)
+
+
+FNAME_TEXT=de_DE.blogs de_DE.news de_DE.twitter \
+ 			en_US.blogs en_US.news en_US.twitter \
+			fi_FI.blogs fi_FI.news fi_FI.twitter \
+			ru_RU.blogs ru_RU.news ru_RU.twitter
+
+$(foreach fname,$(FNAME_TEXT),text.$(fname).txt): text.%.txt: %.txt \
+	R/Clean_texts.R
+	# $@ ...
+	Rscript $(lastword $^)\
+		--in=data_in/$(*).txt \
+		--out=cache/$(@F)
