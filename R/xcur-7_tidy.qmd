@@ -3,8 +3,16 @@ title: "xcur-7_tidy"
 format: html
 params:
     dummy: 1
-    file_text: data_in/fi_FI.twitter.txt
+    file_text: data_in/de_DE.twitter.txt
 ---
+
+<!--
+
+    file_text: data_in/fi_FI.twitter.txt
+    file_text: data_in/ru_RU.twitter.txt
+
+-->
+
 
 
 ```{r}
@@ -18,13 +26,15 @@ params <- "R/xcur-7_tidy.qmd" |>
 
 ```{r}
 
-library(rprojroot)
-library(tidytext)
-library(readr)
-library(vroom)
-library(tibble)
-library(dplyr)
-library(stringr)
+suppressPackageStartupMessages({
+    library(rprojroot)
+    # library(tidytext)
+    library(readr)
+    library(vroom)
+    library(tibble)
+    library(dplyr)
+    library(stringr)
+})
 
 root <- rprojroot::is_renv_project
 
@@ -51,6 +61,425 @@ a2n <- function(v) {stringi::stri_trans_general(v, "Any-Name")}
 n2a <- function(v) {stringi::stri_trans_general(v, "Name-Any")}
 
 ```
+
+
+```{r}
+v_dirt1 <- c(
+  "\\N{REPLACEMENT CHARACTER}",
+  "\\N{<private use area-E001>}",
+  "\\N{<private use area-E002>}",
+  "\\N{<private use area-E003>}",
+  "\\N{<private use area-E004>}",
+  "\\N{<private use area-E005>}",
+  "\\N{<private use area-E009>}",
+  "\\N{<private use area-E00A>}",
+  "\\N{<private use area-E00C>}",
+  "\\N{<private use area-E00D>}",
+  "\\N{<private use area-E00E>}",
+  "\\N{<private use area-E00F>}",
+  "\\N{<private use area-E011>}",
+  "\\N{<private use area-E018>}",
+  "\\N{<private use area-E019>}",
+  "\\N{<private use area-E01B>}",
+  "\\N{<private use area-E01D>}",
+  "\\N{<private use area-E022>}",
+  "\\N{<private use area-E030>}",
+  "\\N{<private use area-E033>}",
+  "\\N{<private use area-E036>}",
+  "\\N{<private use area-E037>}",
+  "\\N{<private use area-E039>}",
+  "\\N{<private use area-E03C>}",
+  "\\N{<private use area-E040>}",
+  "\\N{<private use area-E043>}",
+  "\\N{<private use area-E044>}",
+  "\\N{<private use area-E045>}",
+  "\\N{<private use area-E046>}",
+  "\\N{<private use area-E048>}",
+  "\\N{<private use area-E049>}",
+  "\\N{<private use area-E04A>}",
+  "\\N{<private use area-E04B>}",
+  "\\N{<private use area-E04C>}",
+  "\\N{<private use area-E04E>}",
+  "\\N{<private use area-E04F>}",
+  "\\N{<private use area-E054>}",
+  "\\N{<private use area-E056>}",
+  "\\N{<private use area-E057>}",
+  "\\N{<private use area-E058>}",
+  "\\N{<private use area-E05A>}",
+  "\\N{<private use area-E104>}",
+  "\\N{<private use area-E105>}",
+  "\\N{<private use area-E106>}",
+  "\\N{<private use area-E107>}",
+  "\\N{<private use area-E108>}",
+  "\\N{<private use area-E10B>}",
+  "\\N{<private use area-E110>}",
+  "\\N{<private use area-E111>}",
+  "\\N{<private use area-E112>}",
+  "\\N{<private use area-E113>}",
+  "\\N{<private use area-E118>}",
+  "\\N{<private use area-E119>}",
+  "\\N{<private use area-E11A>}",
+  "\\N{<private use area-E11B>}",
+  "\\N{<private use area-E11C>}",
+  "\\N{<private use area-E11D>}",
+  "\\N{<private use area-E120>}",
+  "\\N{<private use area-E12A>}",
+  "\\N{<private use area-E12F>}",
+  "\\N{<private use area-E131>}",
+  "\\N{<private use area-E132>}",
+  "\\N{<private use area-E13A>}",
+  "\\N{<private use area-E13C>}",
+  "\\N{<private use area-E13D>}",
+  "\\N{<private use area-E142>}",
+  "\\N{<private use area-E145>}",
+  "\\N{<private use area-E146>}",
+  "\\N{<private use area-E14C>}",
+  "\\N{<private use area-E155>}",
+  "\\N{<private use area-E15A>}",
+  "\\N{<private use area-E201>}",
+  "\\N{<private use area-E22E>}",
+  "\\N{<private use area-E234>}",
+  "\\N{<private use area-E303>}",
+  "\\N{<private use area-E304>}",
+  "\\N{<private use area-E305>}",
+  "\\N{<private use area-E306>}",
+  "\\N{<private use area-E308>}",
+  "\\N{<private use area-E30C>}",
+  "\\N{<private use area-E30E>}",
+  "\\N{<private use area-E30F>}",
+  "\\N{<private use area-E310>}",
+  "\\N{<private use area-E311>}",
+  "\\N{<private use area-E312>}",
+  "\\N{<private use area-E31D>}",
+  "\\N{<private use area-E31E>}",
+  "\\N{<private use area-E31F>}",
+  "\\N{<private use area-E322>}",
+  "\\N{<private use area-E324>}",
+  "\\N{<private use area-E327>}",
+  "\\N{<private use area-E328>}",
+  "\\N{<private use area-E329>}",
+  "\\N{<private use area-E32E>}",
+  "\\N{<private use area-E337>}",
+  "\\N{<private use area-E33A>}",
+  "\\N{<private use area-E33B>}",
+  "\\N{<private use area-E340>}",
+  "\\N{<private use area-E341>}",
+  "\\N{<private use area-E345>}",
+  "\\N{<private use area-E347>}",
+  "\\N{<private use area-E34B>}",
+  "\\N{<private use area-E34D>}",
+  "\\N{<private use area-E401>}",
+  "\\N{<private use area-E402>}",
+  "\\N{<private use area-E403>}",
+  "\\N{<private use area-E404>}",
+  "\\N{<private use area-E405>}",
+  "\\N{<private use area-E406>}",
+  "\\N{<private use area-E407>}",
+  "\\N{<private use area-E408>}",
+  "\\N{<private use area-E409>}",
+  "\\N{<private use area-E40A>}",
+  "\\N{<private use area-E40C>}",
+  "\\N{<private use area-E40D>}",
+  "\\N{<private use area-E40E>}",
+  "\\N{<private use area-E40F>}",
+  "\\N{<private use area-E410>}",
+  "\\N{<private use area-E411>}",
+  "\\N{<private use area-E412>}",
+  "\\N{<private use area-E413>}",
+  "\\N{<private use area-E414>}",
+  "\\N{<private use area-E415>}",
+  "\\N{<private use area-E416>}",
+  "\\N{<private use area-E417>}",
+  "\\N{<private use area-E418>}",
+  "\\N{<private use area-E419>}",
+  "\\N{<private use area-E41C>}",
+  "\\N{<private use area-E41E>}",
+  "\\N{<private use area-E41F>}",
+  "\\N{<private use area-E420>}",
+  "\\N{<private use area-E421>}",
+  "\\N{<private use area-E423>}",
+  "\\N{<private use area-E424>}",
+  "\\N{<private use area-E426>}",
+  "\\N{<private use area-E429>}",
+  "\\N{<private use area-E42E>}",
+  "\\N{<private use area-E430>}",
+  "\\N{<private use area-E431>}",
+  "\\N{<private use area-E432>}",
+  "\\N{<private use area-E435>}",
+  "\\N{<private use area-E437>}",
+  "\\N{<private use area-E440>}",
+  "\\N{<private use area-E444>}",
+  "\\N{<private use area-E447>}",
+  "\\N{<private use area-E448>}",
+  "\\N{<private use area-E502>}",
+  "\\N{<private use area-E50C>}",
+  "\\N{<private use area-E50F>}",
+  "\\N{<private use area-E512>}",
+  "\\N{<private use area-E515>}",
+  "\\N{<private use area-E516>}",
+  "\\N{<private use area-E517>}",
+  "\\N{<private use area-E518>}",
+  "\\N{<private use area-E519>}",
+  "\\N{<private use area-E51A>}",
+  "\\N{<private use area-E51C>}",
+  "\\N{<private use area-E51F>}",
+  "\\N{<private use area-E520>}",
+  "\\N{<private use area-E522>}",
+  "\\N{<private use area-E523>}",
+  "\\N{<private use area-E528>}",
+  "\\N{<private use area-E52B>}",
+  "\\N{<private use area-EF03>}",
+  "\\N{<private use area-F04A>}",
+  "\\N{<private use area-F49C>}",
+  "\\N{<private use area-F60C>}",
+  "\\N{<private use area-F620>}",
+  "\\N{<private use area-F8FF>}",
+  "\\N{<private use area-E007>}",
+  "\\N{<private use area-E012>}",
+  "\\N{<private use area-E017>}",
+  "\\N{<private use area-E01C>}",
+  "\\N{<private use area-E023>}",
+  "\\N{<private use area-E028>}",
+  "\\N{<private use area-E032>}",
+  "\\N{<private use area-E035>}",
+  "\\N{<private use area-E03D>}",
+  "\\N{<private use area-E03E>}",
+  "\\N{<private use area-E041>}",
+  "\\N{<private use area-E047>}",
+  "\\N{<private use area-E050>}",
+  "\\N{<private use area-E052>}",
+  "\\N{<private use area-E055>}",
+  "\\N{<private use area-E059>}",
+  "\\N{<private use area-E10C>}",
+  "\\N{<private use area-E10F>}",
+  "\\N{<private use area-E115>}",
+  "\\N{<private use area-E122>}",
+  "\\N{<private use area-E126>}",
+  "\\N{<private use area-E129>}",
+  "\\N{<private use area-E12B>}",
+  "\\N{<private use area-E130>}",
+  "\\N{<private use area-E134>}",
+  "\\N{<private use area-E13B>}",
+  "\\N{<private use area-E13E>}",
+  "\\N{<private use area-E13F>}",
+  "\\N{<private use area-E140>}",
+  "\\N{<private use area-E141>}",
+  "\\N{<private use area-E147>}",
+  "\\N{<private use area-E148>}",
+  "\\N{<private use area-E20A>}",
+  "\\N{<private use area-E20C>}",
+  "\\N{<private use area-E20D>}",
+  "\\N{<private use area-E20E>}",
+  "\\N{<private use area-E20F>}",
+  "\\N{<private use area-E219>}",
+  "\\N{<private use area-E230>}",
+  "\\N{<private use area-E231>}",
+  "\\N{<private use area-E251>}",
+  "\\N{<private use area-E301>}",
+  "\\N{<private use area-E307>}",
+  "\\N{<private use area-E30A>}",
+  "\\N{<private use area-E30B>}",
+  "\\N{<private use area-E314>}",
+  "\\N{<private use area-E316>}",
+  "\\N{<private use area-E317>}",
+  "\\N{<private use area-E326>}",
+  "\\N{<private use area-E32A>}",
+  "\\N{<private use area-E32B>}",
+  "\\N{<private use area-E32C>}",
+  "\\N{<private use area-E32D>}",
+  "\\N{<private use area-E330>}",
+  "\\N{<private use area-E331>}",
+  "\\N{<private use area-E333>}",
+  "\\N{<private use area-E335>}",
+  "\\N{<private use area-E336>}",
+  "\\N{<private use area-E339>}",
+  "\\N{<private use area-E33F>}",
+  "\\N{<private use area-E40B>}",
+  "\\N{<private use area-E41D>}",
+  "\\N{<private use area-E428>}",
+  "\\N{<private use area-E42A>}",
+  "\\N{<private use area-E43E>}",
+  "\\N{<private use area-E443>}",
+  "\\N{<private use area-E445>}",
+  "\\N{<private use area-E44B>}",
+  "\\N{<private use area-E44C>}",
+  "\\N{<private use area-E503>}",
+  "\\N{<private use area-E505>}",
+  "\\N{<private use area-E50B>}",
+  "\\N{<private use area-E50D>}",
+  "\\N{<private use area-E50E>}",
+  "\\N{<private use area-E521>}",
+  "\\N{<private use area-E524>}",
+  "\\N{<private use area-E52C>}"
+)
+
+
+v_dirt2 <- c(
+  "\\001",
+  "\\020",
+  "\\034",
+  "\\u0084",
+  "\\u0082",
+  "\\u0099"
+)
+
+s_dirt_pat <- c(
+  "[",
+  v_dirt1,
+  "]+"
+) |>
+  str_flatten()
+```
+
+
+```{r}
+system.time(
+v_drop <- v_lines |>
+    str_remove_all("\\p{Alphabetic}+") |>
+    str_remove_all("\\s+") |>
+    str_replace("(.)\\1+", "\\1") |>
+    unique() |>
+    sort()
+)
+
+```
+
+
+```{r}
+# v_drop
+
+v_check <- v_lines |>
+    str_remove_all("\\p{Emoji_Component}+") |>
+    str_replace("(.)\\1+", "\\1") |>
+    unique() |>
+    str_split("") |> unlist() |>unique() |>
+    sort()
+
+# \p{Mark} : \\N{COMBINING DIAERESIS}
+# \p{Hyphen} :
+#  * \\N{SOFT HYPHEN}, \\N{HYPHEN-MINUS}, \\N{HYPHEN-MINUS}, \\N{KATAKANA MIDDLE DOT},
+#  * \\N{HYPHEN}, \\N{KATAKANA MIDDLE DOT}, \\N{HALFWIDTH KATAKANA MIDDLE DOT},
+#  * \\N{HYPHEN}, \\N{NON-BREAKING HYPHEN},
+# \p{Diacritic} :
+#  * \\N{COMBINING DIAERESIS}, \\N{MIDDLE DOT}, \\N{GRAVE ACCENT}, \\N{FULLWIDTH GRAVE ACCENT},
+#  * \\N{ACUTE ACCENT}, \\N{CIRCUMFLEX ACCENT}, \\N{FULLWIDTH CIRCUMFLEX ACCENT}, \\N{FULLWIDTH MACRON},
+#  * \\N{DIAERESIS}, \\N{KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK}
+# \p{Dash} :
+#  * \\N{HYPHEN-MINUS}, \\N{HYPHEN}, \\N{EN DASH}, \\N{EM DASH}, \\N{WAVE DASH}, \\N{MINUS SIGN}
+# \p{Math} :
+#  * \\N{FULLWIDTH REVERSE SOLIDUS}, \\N{DOUBLE PRIME}, \\N{CIRCUMFLEX ACCENT},
+#  * \\N{FULLWIDTH CIRCUMFLEX ACCENT}, \\N{RIGHTWARDS ARROW}, \\N{FOR ALL}, \\N{N-ARY SUMMATION},
+#  * \\N{PLUS SIGN}, \\N{PLUS-MINUS SIGN}, \\N{LESS-THAN SIGN}, \\N{FULLWIDTH LESS-THAN SIGN},
+#  * \\N{EQUALS SIGN}, \\N{NOT EQUAL TO}, \\N{GREATER-THAN SIGN}, \\N{FULLWIDTH GREATER-THAN SIGN},
+#  * \\N{NOT SIGN}, \\N{VERTICAL LINE}, \\N{TILDE}, \\N{FULLWIDTH TILDE}, \\N{MINUS SIGN}, \\N{ALMOST EQUAL TO},
+#  * \\N{LESS-THAN OR EQUAL TO}, \\N{BLACK UP-POINTING TRIANGLE}, \\N{WHITE UP-POINTING TRIANGLE},
+#  * \\N{BLACK DOWN-POINTING TRIANGLE}, \\N{WHITE DOWN-POINTING TRIANGLE}, \\N{BLACK CIRCLE}, \\N{BLACK STAR},
+#  * \\N{WHITE STAR}, \\N{FEMALE SIGN}, \\N{MALE SIGN}, \\N{WHITE HEART SUIT}
+# \p{Extended_Pictographic} :
+#  * \\N{COPYRIGHT SIGN}, \\N{REGISTERED SIGN}, \\N{BLACK SUN WITH RAYS}, \\N{CLOUD},
+#  * \\N{BLACK STAR}, \\N{SKULL AND CROSSBONES}, \\N{WHITE FROWNING FACE}, \\N{WHITE SMILING FACE},
+#  * \\N{BLACK SMILING FACE}, \\N{WHITE SUN WITH RAYS}, \\N{FEMALE SIGN}, \\N{MALE SIGN},
+#  * \\N{WHITE HEART SUIT}, \\N{BLACK HEART SUIT}, \\N{QUARTER NOTE}, \\N{EIGHTH NOTE},
+#  * \\N{BEAMED EIGHTH NOTES}, \\N{BEAMED SIXTEENTH NOTES}, \\N{RECYCLING SYMBOL FOR GENERIC MATERIALS},
+#  * \\N{HEAVY CHECK MARK}, \\N{HEAVY BLACK HEART}, \\N{TRADE MARK SIGN}
+# \p{Grapheme_Base} :
+#  * \\N{LOW LINE}, \\N{FULLWIDTH LOW LINE}, \\N{WAVY LOW LINE}, \\N{HYPHEN-MINUS}, \\N{HYPHEN}, \\N{EN DASH},
+#  * \\N{EM DASH}, \\N{WAVE DASH}, \\N{KATAKANA MIDDLE DOT}, \\N{HALFWIDTH KATAKANA MIDDLE DOT}, \\N{COMMA},
+#  * \\N{IDEOGRAPHIC COMMA}, \\N{SEMICOLON}, \\N{FULLWIDTH SEMICOLON}, \\N{COLON}, \\N{EXCLAMATION MARK},
+#  * \\N{FULLWIDTH EXCLAMATION MARK}, \\N{INVERTED EXCLAMATION MARK}, \\N{QUESTION MARK}, \\N{FULLWIDTH QUESTION MARK},
+#  * \\N{INVERTED QUESTION MARK}, \\N{FULL STOP}, \\N{FULLWIDTH FULL STOP}, \\N{HORIZONTAL ELLIPSIS},
+#  * \\N{IDEOGRAPHIC FULL STOP}, \\N{HALFWIDTH IDEOGRAPHIC FULL STOP}, \\N{MIDDLE DOT}, \\N{APOSTROPHE}, \\N{RIGHT SINGLE QUOTATION MARK},
+#  * ...
+#  * \\N{CURRENCY SIGN}, \\N{DOLLAR SIGN}, \\N{POUND SIGN}, \\N{YEN SIGN}, \\N{EURO SIGN},
+#  * \\N{DIGIT ZERO}, \\N{FULLWIDTH DIGIT ZERO}, \\N{SUPERSCRIPT ZERO}, \\N{DIGIT ONE}, \\N{FULLWIDTH DIGIT ONE},
+#  * \\N{VULGAR FRACTION ONE HALF}, \\N{DIGIT TWO}, \\N{FULLWIDTH DIGIT TWO}, \\N{SUPERSCRIPT TWO}, \\N{DIGIT THREE},
+#  * \\N{FULLWIDTH DIGIT THREE}, \\N{SUPERSCRIPT THREE}, \\N{DIGIT FOUR}, \\N{TELUGU DIGIT FOUR}, \\N{DIGIT FIVE},
+# * \\N{DIGIT SIX}, \\N{FULLWIDTH DIGIT SIX}, \\N{DIGIT SEVEN}, \\N{DIGIT EIGHT}, \\N{DIGIT NINE}, \\N{NUMERO SIGN},
+# * \\N{TRADE MARK SIGN}, \\N{REPLACEMENT CHARACTER}
+# \p{Control} :
+#  * \\N{<control-0084>}, \\N{<control-0082>}, \\N{<control-0010>}, \\N{<control-001C>}, \\N{<control-0099>},
+#  * \\N{<control-007F>}, \\N{<control-0001>}
+# \p{Punctuarion} === \\p{P}:
+#  * ...
+# \p{Symbol} === \\p{S}:
+#  * \\N{GRAVE ACCENT}, \\N{FULLWIDTH GRAVE ACCENT}, \\N{ACUTE ACCENT}, \\N{CIRCUMFLEX ACCENT},
+#  * \\N{FULLWIDTH CIRCUMFLEX ACCENT}, \\N{FULLWIDTH MACRON}, \\N{DIAERESIS}, \\N{KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK},
+#  * \\N{DEGREE SIGN}, \\N{COPYRIGHT SIGN}, \\N{REGISTERED SIGN}, \\N{RIGHTWARDS ARROW}, \\N{FOR ALL}, \\N{N-ARY SUMMATION},
+#  * \\N{PLUS SIGN}, \\N{PLUS-MINUS SIGN}, \\N{LESS-THAN SIGN}, \\N{FULLWIDTH LESS-THAN SIGN}, \\N{EQUALS SIGN},
+#  * \\N{NOT EQUAL TO}, \\N{GREATER-THAN SIGN}, \\N{FULLWIDTH GREATER-THAN SIGN}, \\N{NOT SIGN}, \\N{VERTICAL LINE},
+#  * \\N{BROKEN BAR}, \\N{TILDE}, \\N{FULLWIDTH TILDE}, \\N{MINUS SIGN}, \\N{ALMOST EQUAL TO}, \\N{LESS-THAN OR EQUAL TO},
+#  * \\N{BOX DRAWINGS LIGHT HORIZONTAL}, \\N{FULL BLOCK}, \\N{LEFT HALF BLOCK}, \\N{LIGHT SHADE},
+#  * \\N{BLACK UP-POINTING TRIANGLE}, \\N{WHITE UP-POINTING TRIANGLE}, \\N{BLACK DOWN-POINTING TRIANGLE},
+#  * \\N{WHITE DOWN-POINTING TRIANGLE}, \\N{FISHEYE}, \\N{BULLSEYE}, \\N{BLACK CIRCLE},
+#  * \\N{CIRCLE WITH ALL BUT UPPER LEFT QUADRANT BLACK}, \\N{LOWER RIGHT QUADRANT CIRCULAR ARC},
+#  * \\N{LOWER LEFT QUADRANT CIRCULAR ARC}, \\N{UPPER HALF CIRCLE}, \\N{LOWER HALF CIRCLE}, \\N{WHITE BULLET},
+#  * \\N{BLACK SUN WITH RAYS}, \\N{CLOUD}, \\N{BLACK STAR}, \\N{WHITE STAR}, \\N{SKULL AND CROSSBONES},
+#  * \\N{WHITE FROWNING FACE}, \\N{WHITE SMILING FACE}, \\N{BLACK SMILING FACE}, \\N{WHITE SUN WITH RAYS},
+#  * \\N{FEMALE SIGN}, \\N{MALE SIGN}, \\N{WHITE HEART SUIT}, \\N{BLACK HEART SUIT}, \\N{QUARTER NOTE}, \\N{EIGHTH NOTE},
+#  * \\N{BEAMED EIGHTH NOTES}, \\N{BEAMED SIXTEENTH NOTES}, \\N{RECYCLING SYMBOL FOR GENERIC MATERIALS},
+#  * \\N{HEAVY CHECK MARK}, \\N{BLACK FLORETTE}, \\N{HEAVY BLACK HEART}, \\N{HEAVY WIDE-HEADED RIGHTWARDS ARROW},
+#  * \\N{CURRENCY SIGN}, \\N{DOLLAR SIGN}, \\N{POUND SIGN}, \\N{YEN SIGN}, \\N{EURO SIGN}, \\N{NUMERO SIGN},
+#  * \\N{TRADE MARK SIGN}, \\N{REPLACEMENT CHARACTER}
+# \p{Number}:
+#  * \\N{DIGIT ZERO}, \\N{FULLWIDTH DIGIT ZERO}, \\N{SUPERSCRIPT ZERO}, \\N{DIGIT ONE}, \\N{FULLWIDTH DIGIT ONE},
+#  * \\N{VULGAR FRACTION ONE HALF}, \\N{DIGIT TWO}, \\N{FULLWIDTH DIGIT TWO}, \\N{SUPERSCRIPT TWO}, \\N{DIGIT THREE},
+#  * \\N{FULLWIDTH DIGIT THREE}, \\N{SUPERSCRIPT THREE}, \\N{DIGIT FOUR}, \\N{TELUGU DIGIT FOUR}, \\N{DIGIT FIVE},
+#  * \\N{DIGIT SIX}, \\N{FULLWIDTH DIGIT SIX}, \\N{DIGIT SEVEN}, \\N{DIGIT EIGHT}, \\N{DIGIT NINE}
+
+```
+
+```{r}
+v_residuo <- v_drop |>
+    str_remove_all("\\p{Math}+") |>
+    str_remove_all("\\p{Diacritic}+") |>
+    str_remove_all("\\p{Extended_Pictographic}+") |>
+    str_remove_all("\\p{Punctuation}+") |>
+    str_remove_all("\\p{Symbol}+") |>
+    str_remove_all("\\p{Control}+") |>
+    str_remove_all("\\p{Number}+") |>
+    str_remove_all("\\p{Hyphen}+") |>
+    str_remove_all("\\p{Bidi_Control}+") |>
+    str_remove_all("\\N{COMBINING CYRILLIC MILLIONS SIGN}+") |>
+    str_remove_all("\\N{COMBINING ENCLOSING KEYCAP}+") |>
+    str_remove_all("\\N{ZERO WIDTH SPACE}+") |>
+    str_replace("(.)\\1+", "\\1") |>
+    unique() |>
+    str_split("") |> unlist() |> unique() |>
+    setdiff(n2a(v_dirt1)) |>
+    sort()
+
+#    str_remove_all("\\p{Grapheme_Base}+") |>
+
+```
+
+```{r}
+
+v_result <- v_drop |>
+    str_remove_all("\\p{Control}+") |>
+    str_remove_all("\\p{Bidi_Control}+") |>
+    str_remove_all("\\N{ZERO WIDTH SPACE}+") |>
+    str_remove_all("\\N{COMBINING ENCLOSING KEYCAP}+") |>
+    # ---
+    str_replace_all("\\N{COMBINING CYRILLIC MILLIONS SIGN}+", " ") |>
+    str_replace_all("\\p{Punctuation}+", " ") |>
+    str_replace_all("\\p{Symbol}+", " ") |>
+    str_replace_all("\\p{Control}+", " ") |>
+    str_replace_all("\\p{Number}+"," ")|>
+    str_replace_all("\\p{Math}+", " ") |>
+    str_replace_all("\\p{Hyphen}+", " ") |>
+    str_replace_all("\\p{Diacritic}+", " ") |>
+    str_replace_all("\\p{Extended_Pictographic}+", " ") |>
+    # ---
+    str_squish() |>
+    unique() |>
+    sort()
+
+v_result |> length()
+
+```
+
+
+
 
 ```{r}
 
@@ -115,13 +544,17 @@ v_content <- v_lines |>
 # "\\N{REPLACEMENT CHARACTER}"
 #    str_remove_all(n2a("\\N{<private use area-F8FF>}")) |>
 
+# Word characters are [\p{Alphabetic}\p{Mark}\p{Decimal_Number}\p{Connector_Punctuation}\u200c\u200d].
+
+# \p{Mark} : \\N{COMBINING DIAERESIS}
+
 length(v_content)
 
 
 ```
 ```{r}
 
-v_lines_clean <- v_lines |>
+# v_lines_clean <- v_lines |>
 
 
 ```
